@@ -1,37 +1,47 @@
 package cl.bne.curriculardata.api;
 
 import cl.bne.curriculardata.domain.Postulante;
+import cl.bne.curriculardata.dto.PostulanteDTO;
+import cl.bne.curriculardata.mapper.PostulanteMapper;
 import org.springframework.web.bind.annotation.*;
+import jakarta.validation.Valid;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/postulantes")
 public class PostulanteController {
     private final Map<Long, Postulante> postulantes = new HashMap<>();
     private long idCounter = 1;
+    private final PostulanteMapper mapper = PostulanteMapper.INSTANCE;
 
     @GetMapping
-    public List<Postulante> listar() {
-        return new ArrayList<>(postulantes.values());
+    public List<PostulanteDTO> listar() {
+        return postulantes.values().stream()
+                .map(mapper::toDTO)
+                .collect(Collectors.toList());
     }
 
     @GetMapping("/{id}")
-    public Postulante obtener(@PathVariable Long id) {
-        return postulantes.get(id);
+    public PostulanteDTO obtener(@PathVariable Long id) {
+        Postulante postulante = postulantes.get(id);
+        return postulante != null ? mapper.toDTO(postulante) : null;
     }
 
     @PostMapping
-    public Postulante crear(@RequestBody Postulante postulante) {
+    public PostulanteDTO crear(@Valid @RequestBody PostulanteDTO dto) {
+        Postulante postulante = mapper.toEntity(dto);
         postulante.setId(idCounter++);
         postulantes.put(postulante.getId(), postulante);
-        return postulante;
+        return mapper.toDTO(postulante);
     }
 
     @PutMapping("/{id}")
-    public Postulante editar(@PathVariable Long id, @RequestBody Postulante postulante) {
+    public PostulanteDTO editar(@PathVariable Long id, @Valid @RequestBody PostulanteDTO dto) {
+        Postulante postulante = mapper.toEntity(dto);
         postulante.setId(id);
         postulantes.put(id, postulante);
-        return postulante;
+        return mapper.toDTO(postulante);
     }
 
     @DeleteMapping("/{id}")
