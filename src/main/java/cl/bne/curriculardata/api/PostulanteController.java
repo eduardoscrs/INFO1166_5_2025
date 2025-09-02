@@ -1,51 +1,57 @@
 package cl.bne.curriculardata.api;
 
 import cl.bne.curriculardata.domain.Postulante;
-import cl.bne.curriculardata.dto.PostulanteDTO;
-import cl.bne.curriculardata.mapper.PostulanteMapper;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
-import jakarta.validation.Valid;
+import org.springframework.web.server.ResponseStatusException;
+
 import java.util.*;
-import java.util.stream.Collectors;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 
 @RestController
-@RequestMapping("/api/postulantes")
+@RequestMapping("/api/v1/personas") // si prefieres, cambia a "/api/postulantes"
 public class PostulanteController {
-    private final Map<Long, Postulante> postulantes = new HashMap<>();
-    private long idCounter = 1;
-    private final PostulanteMapper mapper = PostulanteMapper.INSTANCE;
+
+    private final Map<Long, Postulante> postulantes = new ConcurrentHashMap<>();
+    private final AtomicLong idCounter = new AtomicLong(0);
 
     @GetMapping
-    public List<PostulanteDTO> listar() {
-        return postulantes.values().stream()
-                .map(mapper::toDTO)
-                .collect(Collectors.toList());
+    public Collection<Postulante> listar() {
+        return postulantes.values();
     }
 
     @GetMapping("/{id}")
-    public PostulanteDTO obtener(@PathVariable Long id) {
-        Postulante postulante = postulantes.get(id);
-        return postulante != null ? mapper.toDTO(postulante) : null;
+    public Postulante obtener(@PathVariable Long id) {
+        Postulante p = postulantes.get(id);
+        if (p == null) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Postulante no encontrado");
+        return p;
     }
 
     @PostMapping
-    public PostulanteDTO crear(@Valid @RequestBody PostulanteDTO dto) {
-        Postulante postulante = mapper.toEntity(dto);
-        postulante.setId(idCounter++);
-        postulantes.put(postulante.getId(), postulante);
-        return mapper.toDTO(postulante);
+    @ResponseStatus(HttpStatus.CREATED)
+    public Postulante crear(@RequestBody Postulante postulante) {
+        long id = idCounter.incrementAndGet();
+        postulante.setId(id);
+        if (postulante.getExperiencias() == null) postulante.setExperiencias(new ArrayList<>());
+        postulantes.put(id, postulante);
+        return postulante;
     }
 
     @PutMapping("/{id}")
-    public PostulanteDTO editar(@PathVariable Long id, @Valid @RequestBody PostulanteDTO dto) {
-        Postulante postulante = mapper.toEntity(dto);
+    public Postulante editar(@PathVariable Long id, @RequestBody Postulante postulante) {
+        if (!postulantes.containsKey(id))
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Postulante no encontrado");
         postulante.setId(id);
+        if (postulante.getExperiencias() == null) postulante.setExperiencias(new ArrayList<>());
         postulantes.put(id, postulante);
         return mapper.toDTO(postulante);
     }
 
     @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
     public void eliminar(@PathVariable Long id) {
-        postulantes.remove(id);
+        if (postulantes.remove(id) == null)
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Postulante no encontrado");
     }
 }
