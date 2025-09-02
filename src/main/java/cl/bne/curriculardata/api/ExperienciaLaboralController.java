@@ -2,23 +2,27 @@ package cl.bne.curriculardata.api;
 
 import cl.bne.curriculardata.domain.ExperienciaLaboral;
 import cl.bne.curriculardata.domain.DTOExperiencia.DTOExperienciaLaboral;
+import jakarta.validation.Valid;
+import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 
+import java.net.URI;
 import java.util.*;
-import java.util.stream.Collectors;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 
 @RestController
 @RequestMapping("/api/experiencias")
 public class ExperienciaLaboralController {
 
-    private final Map<Long, ExperienciaLaboral> experiencias = new HashMap<>();
-    private long idCounter = 1;
+    // almacenamiento en memoria (thread-safe)
+    private final Map<Long, ExperienciaLaboral> experiencias = new ConcurrentHashMap<>();
+    private final AtomicLong idCounter = new AtomicLong(1);
 
-    // Mapper
+    // Mapper (simple)
     private DTOExperienciaLaboral toDto(ExperienciaLaboral e) {
         return new DTOExperienciaLaboral(e.getId(), e.getEmpresa(), e.getCargo(), e.getAnios());
     }
-
     private ExperienciaLaboral toEntity(DTOExperienciaLaboral d) {
         return new ExperienciaLaboral(d.getId(), d.getEmpresa(), d.getCargo(), null, d.getAnios());
     }
@@ -26,30 +30,50 @@ public class ExperienciaLaboralController {
     // GET: listar todas
     @GetMapping
     public List<DTOExperienciaLaboral> listar() {
-        return experiencias.values().stream().map(this::toDto).collect(Collectors.toList());
+        return experiencias.values().stream().map(this::toDto).toList();
     }
 
-    // POST: crear
+    // GET: obtener por id
+    @GetMapping("/{id}")
+    public ResponseEntity<DTOExperienciaLaboral> obtener(@PathVariable Long id) {
+        var e = experiencias.get(id);
+        return (e == null) ? ResponseEntity.notFound().build()
+                           : ResponseEntity.ok(toDto(e));
+    }
+
+    // POST: crear (con validación del DTO)
     @PostMapping
-    public DTOExperienciaLaboral crear(@RequestBody DTOExperienciaLaboral dto) {
+    public ResponseEntity<DTOExperienciaLaboral> crear(@Valid @RequestBody DTOExperienciaLaboral dto) {
         var entity = toEntity(dto);
-        entity.setId(idCounter++);
+        entity.setId(idCounter.getAndIncrement());
         experiencias.put(entity.getId(), entity);
-        return toDto(entity);
+
+        var out = toDto(entity);
+        return ResponseEntity
+                .created(URI.create("/api/experiencias/" + out.getId())) // 201 + Location
+                .body(out);
     }
 
-    // PUT: editar
+    // PUT: editar (404 si no existe)
     @PutMapping("/{id}")
-    public DTOExperienciaLaboral editar(@PathVariable Long id, @RequestBody DTOExperienciaLaboral dto) {
-        var entity = toEntity(dto);
-        entity.setId(id);
-        experiencias.put(id, entity);
-        return toDto(entity);
+    public ResponseEntity<DTOExperienciaLaboral> editar(
+            @PathVariable Long id,
+            @Valid @RequestBody DTOExperienciaLaboral dto) {
+
+        var current = experiencias.get(id);
+        if (current == null) return ResponseEntity.notFound().build();
+
+        current.setEmpresa(dto.getEmpresa());
+        current.setCargo(dto.getCargo());
+        current.setAnios(dto.getAnios());
+        return ResponseEntity.ok(toDto(current));
     }
 
-    // DELETE: eliminar
+    // DELETE: eliminar (404 si no existe)
     @DeleteMapping("/{id}")
-    public void eliminar(@PathVariable Long id) {
-        experiencias.remove(id);
+    public ResponseEntity<Void> eliminar(@PathVariable Long id) {
+        var removed = experiencias.remove(id);
+        return (removed == null) ? ResponseEntity.notFound().build()
+                                 : ResponseEntity.noContent().build(); // 204
     }
 }
