@@ -14,4 +14,3 @@ public class Postulante {
     private String apellido;
     private String email;
     private List<ExperienciaLaboral> experiencias;
-}
