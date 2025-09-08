@@ -1,7 +1,8 @@
-package cl.bne.curriculardata.api.mapper;
+package cl.bne.curriculardata.mapper;
 
 import cl.bne.curriculardata.domain.ExperienciaLaboral;
-import cl.bne.curriculardata.domain.DTOExperiencia.DTOExperienciaLaboral;
+import cl.bne.curriculardata.dto.DTOExperienciaLaboral;
+
 import org.springframework.stereotype.Component;
 
 @Component
@@ -12,6 +13,6 @@ public class ExperienciaMapper {
   }
   public ExperienciaLaboral toEntity(DTOExperienciaLaboral d) {
     if (d == null) return null;
-    return new ExperienciaLaboral(d.getId(), d.getEmpresa(), d.getCargo(), null, d.getAnios());
+    return new ExperienciaLaboral(d.getId(), null, d.getEmpresa(), d.getCargo(), null, d.getAnios());
   }
 }

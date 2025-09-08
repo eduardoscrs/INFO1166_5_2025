@@ -1,4 +1,4 @@
-package cl.bne.curriculardata.domain.DTOExperiencia;
+package cl.bne.curriculardata.dto;
 
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;

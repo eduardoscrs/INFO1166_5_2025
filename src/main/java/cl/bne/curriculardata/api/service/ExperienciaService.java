@@ -8,7 +8,7 @@ import jakarta.validation.constraints.Positive;
 
 import org.springframework.validation.annotation.Validated;
 
-import cl.bne.curriculardata.domain.DTOExperiencia.DTOExperienciaLaboral;
+import cl.bne.curriculardata.dto.DTOExperienciaLaboral;
 
 @Validated
 public interface ExperienciaService {
