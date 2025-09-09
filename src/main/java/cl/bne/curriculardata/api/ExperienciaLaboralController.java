@@ -1,9 +1,13 @@
 package cl.bne.curriculardata.api;
 
 import cl.bne.curriculardata.domain.ExperienciaLaboral;
+import cl.bne.curriculardata.dto.DTOExperienciaLaboral;
+import jakarta.validation.Valid;
+import org.springframework.http.*;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.server.ResponseStatusException;
+
+import java.net.URI;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -13,53 +17,63 @@ import java.util.concurrent.atomic.AtomicLong;
 @RequestMapping("/api/v1/personas/{postulanteId}/experiencias")
 public class ExperienciaLaboralController {
 
-    // Mapa por postulante:  postulanteId -> (expId -> experiencia)
-    private final Map<Long, Map<Long, ExperienciaLaboral>> store = new ConcurrentHashMap<>();
-    private final AtomicLong idCounter = new AtomicLong(0);
+    private final Map<Long, ExperienciaLaboral> experiencias = new ConcurrentHashMap<>();
+    private final AtomicLong idCounter = new AtomicLong(1);
 
-    private Map<Long, ExperienciaLaboral> bucket(Long postulanteId) {
-        return store.computeIfAbsent(postulanteId, k -> new ConcurrentHashMap<>());
+    private DTOExperienciaLaboral toDto(ExperienciaLaboral e) {
+        return new DTOExperienciaLaboral(e.getId(), e.getEmpresa(), e.getCargo(), e.getAnios());
+    }
+
+    private ExperienciaLaboral toEntity(DTOExperienciaLaboral d) {
+        return new ExperienciaLaboral(d.getId(), null, d.getEmpresa(), d.getCargo(), null, d.getAnios());
     }
 
     @GetMapping
-    public Collection<ExperienciaLaboral> listar(@PathVariable Long postulanteId) {
-        return bucket(postulanteId).values();
-    }
-
-    @PostMapping
-    @ResponseStatus(HttpStatus.CREATED)
-    public ExperienciaLaboral crear(@PathVariable Long postulanteId,
-                                    @RequestBody ExperienciaLaboral exp) {
-        long id = idCounter.incrementAndGet();
-        exp.setId(id);
-        exp.setPostulanteId(postulanteId);
-        bucket(postulanteId).put(id, exp);
-        return exp;
+    public List<DTOExperienciaLaboral> listar(@PathVariable Long postulanteId) {
+        // Si quieres filtrar por postulanteId, aquí deberías hacerlo
+        return experiencias.values().stream().map(this::toDto).toList();
     }
 
     @GetMapping("/{id}")
-    public ExperienciaLaboral obtener(@PathVariable Long postulanteId, @PathVariable Long id) {
-        var e = bucket(postulanteId).get(id);
-        if (e == null) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Experiencia no encontrada");
-        return e;
+    public ResponseEntity<DTOExperienciaLaboral> obtener(@PathVariable Long id, @PathVariable Long postulanteId) {
+        var e = experiencias.get(id);
+        return (e == null) ? ResponseEntity.notFound().build()
+                           : ResponseEntity.ok(toDto(e));
+    }
+
+    @PostMapping
+    public ResponseEntity<DTOExperienciaLaboral> crear(@PathVariable Long postulanteId, @Valid @RequestBody DTOExperienciaLaboral dto) {
+        var entity = toEntity(dto);
+        entity.setId(idCounter.getAndIncrement());
+        entity.setPostulanteId(postulanteId); // Asocia la experiencia al postulante
+        experiencias.put(entity.getId(), entity);
+
+        var out = toDto(entity);
+        return ResponseEntity
+                .created(URI.create("/api/v1/personas/" + postulanteId + "/experiencias/" + out.getId()))
+                .body(out);
     }
 
     @PutMapping("/{id}")
-    public ExperienciaLaboral editar(@PathVariable Long postulanteId,
-                                     @PathVariable Long id,
-                                     @RequestBody ExperienciaLaboral exp) {
-        var b = bucket(postulanteId);
-        if (!b.containsKey(id)) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Experiencia no encontrada");
-        exp.setId(id);
-        exp.setPostulanteId(postulanteId);
-        b.put(id, exp);
-        return exp;
+    public ResponseEntity<DTOExperienciaLaboral> editar(
+            @PathVariable Long id,
+            @PathVariable Long postulanteId,
+            @Valid @RequestBody DTOExperienciaLaboral dto) {
+
+        var current = experiencias.get(id);
+        if (current == null) return ResponseEntity.notFound().build();
+
+        current.setEmpresa(dto.getEmpresa());
+        current.setCargo(dto.getCargo());
+        current.setAnios(dto.getAnios());
+        // Si quieres actualizar el postulanteId, puedes hacerlo aquí
+        return ResponseEntity.ok(toDto(current));
     }
 
     @DeleteMapping("/{id}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void eliminar(@PathVariable Long postulanteId, @PathVariable Long id) {
-        var b = bucket(postulanteId);
-        if (b.remove(id) == null) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Experiencia no encontrada");
+    public ResponseEntity<Void> eliminar(@PathVariable Long id, @PathVariable Long postulanteId) {
+        var removed = experiencias.remove(id);
+        return (removed == null) ? ResponseEntity.notFound().build()
+                                 : ResponseEntity.noContent().build();
     }
 }

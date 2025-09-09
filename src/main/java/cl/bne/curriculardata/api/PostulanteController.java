@@ -38,15 +38,15 @@ public class PostulanteController {
         return postulante;
     }
 
-    @PutMapping("/{id}")
-    public Postulante editar(@PathVariable Long id, @RequestBody Postulante postulante) {
-        if (!postulantes.containsKey(id))
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Postulante no encontrado");
-        postulante.setId(id);
-        if (postulante.getExperiencias() == null) postulante.setExperiencias(new ArrayList<>());
-        postulantes.put(id, postulante);
-        return mapper.toDTO(postulante);
-    }
+ @PutMapping("/{id}")
+public Postulante editar(@PathVariable Long id, @RequestBody Postulante postulante) {
+    if (!postulantes.containsKey(id))
+        throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Postulante no encontrado");
+    postulante.setId(id);
+    if (postulante.getExperiencias() == null) postulante.setExperiencias(new ArrayList<>());
+    postulantes.put(id, postulante);
+    return postulante;
+}
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)

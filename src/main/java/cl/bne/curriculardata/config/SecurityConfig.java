@@ -1,5 +1,5 @@
 // src/main/java/cl/bne/curriculardata/api/SecurityConfig.java
-package cl.bne.curriculardata.api;
+package cl.bne.curriculardata.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -11,6 +11,7 @@ public class SecurityConfig {
   @Bean
   SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
     http.csrf(csrf -> csrf.disable())
+      .headers(h -> h.frameOptions(frame -> frame.sameOrigin())) 
       .authorizeHttpRequests(auth -> auth
         .requestMatchers("/health", "/v3/api-docs/**", "/swagger-ui/**", "/api/v1/**").permitAll()
         .anyRequest().permitAll());
