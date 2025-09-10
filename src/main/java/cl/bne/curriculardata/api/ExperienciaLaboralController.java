@@ -1,79 +1,64 @@
 package cl.bne.curriculardata.api;
 
-import cl.bne.curriculardata.domain.ExperienciaLaboral;
+import cl.bne.curriculardata.api.service.ExperienciaService;
 import cl.bne.curriculardata.dto.DTOExperienciaLaboral;
 import jakarta.validation.Valid;
-import org.springframework.http.*;
-import org.springframework.http.HttpStatus;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import java.net.URI;
-
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/personas/{postulanteId}/experiencias")
+@RequiredArgsConstructor
 public class ExperienciaLaboralController {
 
-    private final Map<Long, ExperienciaLaboral> experiencias = new ConcurrentHashMap<>();
-    private final AtomicLong idCounter = new AtomicLong(1);
+  private final ExperienciaService experienciaService;
 
-    private DTOExperienciaLaboral toDto(ExperienciaLaboral e) {
-        return new DTOExperienciaLaboral(e.getId(), e.getEmpresa(), e.getCargo(), e.getAnios());
-    }
+  @GetMapping
+  public List<DTOExperienciaLaboral> listar(@PathVariable("postulanteId") Long postulanteId) {
+    return experienciaService.list(postulanteId);
+  }
 
-    private ExperienciaLaboral toEntity(DTOExperienciaLaboral d) {
-        return new ExperienciaLaboral(d.getId(), null, d.getEmpresa(), d.getCargo(), null, d.getAnios());
-    }
+  @GetMapping("/{id}")
+  public ResponseEntity<DTOExperienciaLaboral> obtener(
+      @PathVariable("postulanteId") Long postulanteId,
+      @PathVariable("id") Long id) {
+    return ResponseEntity.ok(experienciaService.get(postulanteId, id));
+  }
 
-    @GetMapping
-    public List<DTOExperienciaLaboral> listar(@PathVariable Long postulanteId) {
-        // Si quieres filtrar por postulanteId, aquí deberías hacerlo
-        return experiencias.values().stream().map(this::toDto).toList();
-    }
+  @PostMapping
+  public ResponseEntity<DTOExperienciaLaboral> crear(
+      @PathVariable("postulanteId") Long postulanteId,
+      @Valid @RequestBody DTOExperienciaLaboral dto) {
 
-    @GetMapping("/{id}")
-    public ResponseEntity<DTOExperienciaLaboral> obtener(@PathVariable Long id, @PathVariable Long postulanteId) {
-        var e = experiencias.get(id);
-        return (e == null) ? ResponseEntity.notFound().build()
-                           : ResponseEntity.ok(toDto(e));
-    }
+    var creado = experienciaService.create(postulanteId, dto);
+    URI location = ServletUriComponentsBuilder.fromCurrentRequest()
+        .path("/{id}")
+        .buildAndExpand(creado.getId())
+        .toUri();
 
-    @PostMapping
-    public ResponseEntity<DTOExperienciaLaboral> crear(@PathVariable Long postulanteId, @Valid @RequestBody DTOExperienciaLaboral dto) {
-        var entity = toEntity(dto);
-        entity.setId(idCounter.getAndIncrement());
-        entity.setPostulanteId(postulanteId); // Asocia la experiencia al postulante
-        experiencias.put(entity.getId(), entity);
+    return ResponseEntity.created(location).body(creado);
+  }
 
-        var out = toDto(entity);
-        return ResponseEntity
-                .created(URI.create("/api/v1/personas/" + postulanteId + "/experiencias/" + out.getId()))
-                .body(out);
-    }
+  @PutMapping("/{id}")
+  public ResponseEntity<DTOExperienciaLaboral> editar(
+      @PathVariable("postulanteId") Long postulanteId,
+      @PathVariable("id") Long id,
+      @Valid @RequestBody DTOExperienciaLaboral dto) {
 
-    @PutMapping("/{id}")
-    public ResponseEntity<DTOExperienciaLaboral> editar(
-            @PathVariable Long id,
-            @PathVariable Long postulanteId,
-            @Valid @RequestBody DTOExperienciaLaboral dto) {
+    var actualizado = experienciaService.update(postulanteId, id, dto);
+    return ResponseEntity.ok(actualizado);
+  }
 
-        var current = experiencias.get(id);
-        if (current == null) return ResponseEntity.notFound().build();
+  @DeleteMapping("/{id}")
+  public ResponseEntity<Void> eliminar(
+      @PathVariable("postulanteId") Long postulanteId,
+      @PathVariable("id") Long id) {
 
-        current.setEmpresa(dto.getEmpresa());
-        current.setCargo(dto.getCargo());
-        current.setAnios(dto.getAnios());
-        // Si quieres actualizar el postulanteId, puedes hacerlo aquí
-        return ResponseEntity.ok(toDto(current));
-    }
-
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> eliminar(@PathVariable Long id, @PathVariable Long postulanteId) {
-        var removed = experiencias.remove(id);
-        return (removed == null) ? ResponseEntity.notFound().build()
-                                 : ResponseEntity.noContent().build();
-    }
+    experienciaService.delete(postulanteId, id);
+    return ResponseEntity.noContent().build();
+  }
 }
