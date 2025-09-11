@@ -1,57 +1,55 @@
 package cl.bne.curriculardata.api;
 
 import cl.bne.curriculardata.domain.Postulante;
+import cl.bne.curriculardata.repository.PostulanteRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.List;
 
 @RestController
-@RequestMapping("/api/v1/personas") // si prefieres, cambia a "/api/postulantes"
+@RequestMapping("/api/v1/personas")
 public class PostulanteController {
 
-    private final Map<Long, Postulante> postulantes = new ConcurrentHashMap<>();
-    private final AtomicLong idCounter = new AtomicLong(0);
+    private final PostulanteRepository postulanteRepository;
+
+    public PostulanteController(PostulanteRepository postulanteRepository) {
+        this.postulanteRepository = postulanteRepository;
+    }
 
     @GetMapping
-    public Collection<Postulante> listar() {
-        return postulantes.values();
+    public List<Postulante> listar() {
+        return postulanteRepository.findAll();
     }
 
     @GetMapping("/{id}")
     public Postulante obtener(@PathVariable Long id) {
-        Postulante p = postulantes.get(id);
-        if (p == null) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Postulante no encontrado");
-        return p;
+        return postulanteRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Postulante no encontrado"));
     }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public Postulante crear(@RequestBody Postulante postulante) {
-        long id = idCounter.incrementAndGet();
-        postulante.setId(id);
-        if (postulante.getExperiencias() == null) postulante.setExperiencias(new ArrayList<>());
-        postulantes.put(id, postulante);
-        return postulante;
+        if (postulante.getExperiencias() == null) postulante.setExperiencias(List.of());
+        return postulanteRepository.save(postulante);
     }
 
- @PutMapping("/{id}")
-public Postulante editar(@PathVariable Long id, @RequestBody Postulante postulante) {
-    if (!postulantes.containsKey(id))
-        throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Postulante no encontrado");
-    postulante.setId(id);
-    if (postulante.getExperiencias() == null) postulante.setExperiencias(new ArrayList<>());
-    postulantes.put(id, postulante);
-    return postulante;
-}
+    @PutMapping("/{id}")
+    public Postulante editar(@PathVariable Long id, @RequestBody Postulante postulante) {
+        if (!postulanteRepository.existsById(id))
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Postulante no encontrado");
+        postulante.setId(id);
+        if (postulante.getExperiencias() == null) postulante.setExperiencias(List.of());
+        return postulanteRepository.save(postulante);
+    }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void eliminar(@PathVariable Long id) {
-        if (postulantes.remove(id) == null)
+        if (!postulanteRepository.existsById(id))
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Postulante no encontrado");
+        postulanteRepository.deleteById(id);
     }
 }
