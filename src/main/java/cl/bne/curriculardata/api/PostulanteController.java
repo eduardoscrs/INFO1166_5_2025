@@ -40,6 +40,36 @@ public class PostulanteController {
         p.setNombre(postulante.getNombre());
         p.setApellido(postulante.getApellido());
         p.setEmail(postulante.getEmail());
+        p.setTipoDocumento(postulante.getTipoDocumento());
+        p.setNumeroDocumento(postulante.getNumeroDocumento());
+        p.setPrimerApellido(postulante.getPrimerApellido());
+        p.setSegundoApellido(postulante.getSegundoApellido());
+        p.setSexo(postulante.getSexo());
+        p.setFechaNacimiento(postulante.getFechaNacimiento());
+        p.setNacionalidad(postulante.getNacionalidad());
+        p.setEstadoCivil(postulante.getEstadoCivil());
+        p.setContacto(postulante.getContacto());
+        p.setDireccion(postulante.getDireccion());
+        return ResponseEntity.ok(repo.save(p));
+      })
+      .orElse(ResponseEntity.notFound().build());
+  }
+
+  @PutMapping("/{id}/contacto")
+  public ResponseEntity<Postulante> editarContacto(@PathVariable Long id, @RequestBody cl.bne.curriculardata.domain.DatosContacto contacto) {
+    return repo.findById(id)
+      .map(p -> {
+        p.setContacto(contacto);
+        return ResponseEntity.ok(repo.save(p));
+      })
+      .orElse(ResponseEntity.notFound().build());
+  }
+
+  @PutMapping("/{id}/direccion")
+  public ResponseEntity<Postulante> editarDireccion(@PathVariable Long id, @RequestBody cl.bne.curriculardata.domain.Direccion direccion) {
+    return repo.findById(id)
+      .map(p -> {
+        p.setDireccion(direccion);
         return ResponseEntity.ok(repo.save(p));
       })
       .orElse(ResponseEntity.notFound().build());
