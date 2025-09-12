@@ -2,54 +2,52 @@ package cl.bne.curriculardata.api;
 
 import cl.bne.curriculardata.domain.Postulante;
 import cl.bne.curriculardata.repository.PostulanteRepository;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/personas")
+@RequiredArgsConstructor
 public class PostulanteController {
 
-    private final PostulanteRepository postulanteRepository;
+  private final PostulanteRepository repo;
 
-    public PostulanteController(PostulanteRepository postulanteRepository) {
-        this.postulanteRepository = postulanteRepository;
-    }
+  @PostMapping
+  @ResponseStatus(HttpStatus.CREATED)
+  public Postulante crear(@RequestBody Postulante postulante) {
+    postulante.setId(null); // que lo genere JPA
+    return repo.save(postulante);
+  }
 
-    @GetMapping
-    public List<Postulante> listar() {
-        return postulanteRepository.findAll();
-    }
+  @GetMapping("/{id}")
+  public ResponseEntity<Postulante> obtener(@PathVariable Long id) {
+    return repo.findById(id).map(ResponseEntity::ok).orElse(ResponseEntity.notFound().build());
+  }
 
-    @GetMapping("/{id}")
-    public Postulante obtener(@PathVariable Long id) {
-        return postulanteRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Postulante no encontrado"));
-    }
+  @GetMapping
+  public List<Postulante> listar() {
+    return repo.findAll();
+  }
 
-    @PostMapping
-    @ResponseStatus(HttpStatus.CREATED)
-    public Postulante crear(@RequestBody Postulante postulante) {
-        if (postulante.getExperiencias() == null) postulante.setExperiencias(List.of());
-        return postulanteRepository.save(postulante);
-    }
+  @PutMapping("/{id}")
+  public ResponseEntity<Postulante> editar(@PathVariable Long id, @RequestBody Postulante postulante) {
+    return repo.findById(id)
+      .map(p -> {
+        p.setNombre(postulante.getNombre());
+        p.setApellido(postulante.getApellido());
+        p.setEmail(postulante.getEmail());
+        return ResponseEntity.ok(repo.save(p));
+      })
+      .orElse(ResponseEntity.notFound().build());
+  }
 
-    @PutMapping("/{id}")
-    public Postulante editar(@PathVariable Long id, @RequestBody Postulante postulante) {
-        if (!postulanteRepository.existsById(id))
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Postulante no encontrado");
-        postulante.setId(id);
-        if (postulante.getExperiencias() == null) postulante.setExperiencias(List.of());
-        return postulanteRepository.save(postulante);
-    }
-
-    @DeleteMapping("/{id}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void eliminar(@PathVariable Long id) {
-        if (!postulanteRepository.existsById(id))
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Postulante no encontrado");
-        postulanteRepository.deleteById(id);
-    }
+  @DeleteMapping("/{id}")
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  public void eliminar(@PathVariable Long id) {
+    repo.deleteById(id);
+  }
 }
